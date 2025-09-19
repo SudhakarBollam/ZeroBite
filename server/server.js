@@ -45,7 +45,13 @@ const donationSchema = new mongoose.Schema({
   foodDescription: { type: String, required: true },
   quantity: { type: Number, required: true },
   serves: { type: Number, required: true },
+  cookingTime: { type: Number },
+  pickupLocation: { type: String, required: true },
+  contactNumber: { type: String, required: true },
+  specialInstructions: { type: String },
+  purpose: { type: String },
   status: { type: String, default: 'Available', enum: ['Available', 'Claimed', 'In Transit', 'Delivered'] },
+  statusUpdatedAt: { type: Date, default: Date.now },
   donorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   donorName: { type: String, required: true },
   donorAddress: { type: String, required: true },
@@ -59,6 +65,14 @@ const donationSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 const Donation = mongoose.model('Donation', donationSchema);
+
+// --- Carousel Schema ---
+const carouselImageSchema = new mongoose.Schema({
+  url: { type: String, required: true },
+  title: { type: String },
+  createdAt: { type: Date, default: Date.now }
+});
+const CarouselImage = mongoose.model('CarouselImage', carouselImageSchema);
 
 // --- Auth Middleware ---
 const auth = (req, res, next) => {
@@ -197,7 +211,7 @@ app.get('/api/donations/claimed', auth, async (req, res) => {
 
 app.post('/api/donations', auth, async (req, res) => {
   try {
-    const { foodDescription, quantity, serves } = req.body;
+    const { foodDescription, quantity, serves, cookingTime, pickupLocation, contactNumber, specialInstructions } = req.body;
     const donor = await User.findById(req.user);
     if (!donor || donor.status !== 'Approved') return res.status(403).json({ msg: "User not approved to donate." });
 
@@ -205,6 +219,10 @@ app.post('/api/donations', auth, async (req, res) => {
         foodDescription, 
         quantity, 
         serves,
+        cookingTime,
+        pickupLocation,
+        contactNumber,
+        specialInstructions,
         donorId: donor._id,
         donorName: donor.businessName || donor.contactPerson,
         donorAddress: donor.address,
@@ -251,6 +269,7 @@ app.delete('/api/donations/:id', auth, async (req, res) => {
 
 app.patch('/api/donations/:id/claim', auth, async (req, res) => {
     try {
+        const { purpose } = req.body;
         const charity = await User.findById(req.user);
         if (charity.status !== 'Approved') return res.status(403).json({ msg: "User not approved to claim." });
         const donation = await Donation.findById(req.params.id);
@@ -261,6 +280,7 @@ app.patch('/api/donations/:id/claim', auth, async (req, res) => {
         donation.claimedByCharity = charity._id;
         donation.charityName = charity.charityName || charity.contactPerson;
         donation.charityAddress = charity.address;
+        donation.purpose = purpose;
         const updatedDonation = await donation.save();
         res.json(updatedDonation);
     } catch (error) {
@@ -283,6 +303,7 @@ app.patch('/api/donations/:id/status', auth, async (req, res) => {
         }
 
         donation.status = status;
+        donation.statusUpdatedAt = new Date();
         const updatedDonation = await donation.save();
         res.json(updatedDonation);
     } catch (error) {
@@ -290,6 +311,162 @@ app.patch('/api/donations/:id/status', auth, async (req, res) => {
     }
 });
 
+// Charity view of a donation with ETA (basic heuristic)
+app.get('/api/donations/:id/eta', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user);
+        if (!['Charity', 'Donor', 'Worker', 'Admin'].includes(user.role)) return res.status(403).json({ msg: 'Access denied' });
+        const donation = await Donation.findById(req.params.id);
+        if (!donation) return res.status(404).json({ msg: 'Donation not found.' });
+
+        const now = Date.now();
+        const since = donation.statusUpdatedAt ? (now - new Date(donation.statusUpdatedAt).getTime()) : 0;
+        // Heuristic ETA in minutes based on status
+        let etaMinutes;
+        if (donation.status === 'Claimed') etaMinutes = 45; // waiting pickup
+        else if (donation.status === 'In Transit') etaMinutes = Math.max(5, 30 - Math.floor(since / 60000));
+        else if (donation.status === 'Delivered') etaMinutes = 0;
+        else etaMinutes = 60;
+
+        res.json({
+            status: donation.status,
+            statusUpdatedAt: donation.statusUpdatedAt,
+            etaMinutes: Math.max(0, etaMinutes)
+        });
+    } catch (error) {
+        res.status(400).json({ error: 'Error fetching ETA' });
+    }
+});
+
+// Carousel routes
+app.get('/api/carousel', async (req, res) => {
+    try {
+        const images = await CarouselImage.find().sort({ createdAt: -1 });
+        res.json(images);
+    } catch (e) {
+        res.status(500).json({ error: 'Error fetching carousel' });
+    }
+});
+
+app.post('/api/carousel', auth, async (req, res) => {
+    try {
+        const admin = await User.findById(req.user);
+        if (admin.role !== 'Admin') return res.status(403).json({ msg: 'Access denied' });
+        const { url, title } = req.body;
+        const img = await new CarouselImage({ url, title }).save();
+        res.status(201).json(img);
+    } catch (e) {
+        res.status(400).json({ error: 'Error adding image' });
+    }
+});
+
+app.delete('/api/carousel/:id', auth, async (req, res) => {
+    try {
+        const admin = await User.findById(req.user);
+        if (admin.role !== 'Admin') return res.status(403).json({ msg: 'Access denied' });
+        await CarouselImage.findByIdAndDelete(req.params.id);
+        res.json({ msg: 'Deleted' });
+    } catch (e) {
+        res.status(400).json({ error: 'Error deleting image' });
+    }
+});
+
+// -- Stats Routes --
+app.get('/api/stats', async (req, res) => {
+    try {
+        const totalDonors = await User.countDocuments({ role: 'Donor', status: 'Approved' });
+        const totalCharities = await User.countDocuments({ role: 'Charity', status: 'Approved' });
+        const totalMeals = await Donation.aggregate([
+            { $match: { status: 'Delivered' } },
+            { $group: { _id: null, total: { $sum: '$serves' } } }
+        ]);
+        const totalPortions = await Donation.aggregate([
+            { $match: { status: 'Delivered' } },
+            { $group: { _id: null, total: { $sum: '$quantity' } } }
+        ]);
+        const portions = totalPortions.length > 0 ? totalPortions[0].total : 0;
+        const estimatedFoodKg = Math.round((portions * 0.5) * 10) / 10; // 0.5 kg per portion
+        
+        res.json({
+            donors: totalDonors,
+            charities: totalCharities,
+            meals: totalMeals.length > 0 ? totalMeals[0].total : 0,
+            foodKg: estimatedFoodKg
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching stats' });
+    }
+});
+
+app.get('/api/donations/stats', async (req, res) => {
+    try {
+        // Get donation types
+        const typeStats = await Donation.aggregate([
+            { $match: { status: 'Delivered' } },
+            { $group: { _id: '$foodDescription', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 5 }
+        ]);
+
+        // Get monthly stats
+        const monthlyStats = await Donation.aggregate([
+            { $match: { status: 'Delivered' } },
+            {
+                $group: {
+                    _id: {
+                        year: { $year: '$createdAt' },
+                        month: { $month: '$createdAt' }
+                    },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { '_id.year': 1, '_id.month': 1 } },
+            { $limit: 6 }
+        ]);
+
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthlyData = monthlyStats.map(stat => ({
+            month: months[stat._id.month - 1],
+            count: stat.count
+        }));
+
+        res.json({
+            types: typeStats.map(stat => ({
+                type: stat._id,
+                count: stat.count
+            })),
+            monthly: monthlyData
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching donation stats' });
+    }
+});
+
+// Top contributors (by number of donations delivered)
+app.get('/api/contributors', async (req, res) => {
+    try {
+        const donorStats = await Donation.aggregate([
+            { $match: { status: 'Delivered' } },
+            { $group: { _id: '$donorName', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 6 }
+        ]);
+
+        const charityStats = await Donation.aggregate([
+            { $match: { status: 'Delivered' } },
+            { $group: { _id: '$charityName', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 6 }
+        ]);
+
+        res.json({
+            donors: donorStats.map(d => ({ name: d._id, donations: d.count })),
+            charities: charityStats.map(c => ({ name: c._id, donations: c.count }))
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'Error fetching contributors' });
+    }
+});
 
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);

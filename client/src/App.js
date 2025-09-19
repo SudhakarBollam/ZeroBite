@@ -5,6 +5,8 @@ import CharityDashboard from './components/CharityDashboard';
 import WorkerDashboard from './components/WorkerDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import AuthPage from './components/AuthPage';
+import Navbar from './components/Navbar';
+import BackButton from './components/BackButton';
 import './App.css'; 
 
 function App() {
@@ -38,34 +40,42 @@ function App() {
     setView('home');
   };
 
-  const renderView = () => {
-    if (view === 'home') {
-      return <HomePage onNavigate={() => setView('auth')} />;
+  const renderDashboard = () => {
+    switch (user.role) {
+      case 'Donor':
+        return <DonorDashboard user={user} onLogout={handleLogout} />;
+      case 'Charity':
+        return <CharityDashboard user={user} onLogout={handleLogout} />;
+      case 'Worker':
+        return <WorkerDashboard user={user} onLogout={handleLogout} />;
+      case 'Admin':
+        return <AdminDashboard user={user} onLogout={handleLogout} />;
+      default:
+        setView('home');
+        return null;
     }
-    if (view === 'auth') {
-      return <AuthPage onLogin={handleLogin} />;
-    }
-    if (view === 'dashboard' && user) {
-      switch (user.role) {
-        case 'Donor':
-          return <DonorDashboard user={user} onLogout={handleLogout} />;
-        case 'Charity':
-          return <CharityDashboard user={user} onLogout={handleLogout} />;
-        case 'Worker':
-          return <WorkerDashboard user={user} onLogout={handleLogout} />;
-        case 'Admin':
-          return <AdminDashboard user={user} onLogout={handleLogout} />;
-        default:
-          setView('home');
-          return null;
-      }
-    }
-    return <HomePage onNavigate={() => setView('auth')} />;
   };
 
   return (
     <div className="App">
-      {renderView()}
+      {view === 'home' && (
+        <>
+          <Navbar user={user} onLogout={handleLogout} />
+          <div style={{ marginTop: '80px' }}>
+            <HomePage onNavigate={() => setView('auth')} />
+          </div>
+        </>
+      )}
+      {view === 'auth' && (
+        <>
+          <Navbar user={user} onLogout={handleLogout} />
+          <div style={{ marginTop: '80px' }}>
+            <BackButton onClick={() => setView('home')} text="← Back to Home" />
+            <AuthPage onLogin={handleLogin} onBack={() => setView('home')} />
+          </div>
+        </>
+      )}
+      {view === 'dashboard' && user && renderDashboard()}
     </div>
   );
 }

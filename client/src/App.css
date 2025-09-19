@@ -8,3 +8,27 @@ body {
 .App {
   width: 100%;
 }
+
+/* Unified Theme Palette */
+:root {
+  --primary-50: #eef2ff;
+  --primary-100: #e0e7ff;
+  --primary-200: #c7d2fe;
+  --primary-300: #a5b4fc;
+  --primary-400: #818cf8;
+  --primary-500: #6366f1; /* indigo */
+  --primary-600: #4f46e5;
+  --primary-700: #4338ca;
+  --primary-800: #3730a3;
+  --primary-900: #312e81;
+
+  --accent-500: #06b6d4; /* cyan */
+  --success-500: #22c55e; /* green */
+  --warning-500: #f59e0b; /* amber */
+  --danger-500: #ef4444;  /* red */
+
+  --bg-soft: #f6f7fb;
+  --card-bg: #ffffff;
+  --text-strong: #1f2937;
+  --text-muted: #6b7280;
+}
