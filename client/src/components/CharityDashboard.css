@@ -1,0 +1,77 @@
+.charity-dashboard-container {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background-color: #eaf2f8;
+  border: 1px solid #aed6f1;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+.charity-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+  border-bottom: 1px solid #aed6f1;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+}
+.charity-dashboard-header h1 { color: #2c3e50; margin: 0; font-size: 1.5rem; }
+.charity-dashboard-header h2 { color: #3498db; margin: 5px 0 0; font-weight: normal; font-size: 1.2rem; }
+.approval-notice {
+    background-color: #fdf3cd;
+    color: #856404;
+    padding: 15px;
+    border-radius: 5px;
+    text-align: center;
+    border: 1px solid #ffeeba;
+    margin-bottom: 20px;
+}
+.donation-card-charity {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 5px solid #3498db;
+}
+.donation-info h4 { margin: 0 0 10px 0; color: #2c3e50; }
+.donation-info p { margin: 5px 0; color: #555; }
+.claim-btn {
+    background-color: #2ecc71;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.claim-btn:hover { background-color: #27ae60; }
+
+/* Status-specific styles for charity pickups */
+.donation-card-charity.status-claimed { border-left-color: #f39c12; }
+.donation-card-charity.status-in-transit { border-left-color: #9b59b6; }
+.donation-card-charity.status-delivered { border-left-color: #95a5a6; }
+
+@media (max-width: 768px) {
+    .charity-dashboard-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .donation-card-charity {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .donation-actions {
+        margin-top: 15px;
+        width: 100%;
+    }
+    .claim-btn {
+        width: 100%;
+    }
+}

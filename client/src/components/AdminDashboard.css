@@ -1,0 +1,59 @@
+.admin-dashboard-container {
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background-color: #f2f2f2;
+  border-radius: 8px;
+}
+.admin-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+}
+.admin-dashboard-header h1 { color: #333; margin: 0; font-size: 1.5rem; }
+.admin-dashboard-header h2 { color: #555; margin: 5px 0 0; font-weight: normal; font-size: 1.2rem; }
+
+.user-list { display: flex; flex-direction: column; gap: 15px; }
+.user-card {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.user-details h4 { margin: 0 0 10px; color: #333; }
+.user-details p { margin: 5px 0; color: #666; font-size: 0.9rem; }
+.user-actions { display: flex; gap: 10px; }
+.approve-btn, .reject-btn {
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+}
+.approve-btn { background-color: #2ecc71; }
+.reject-btn { background-color: #e74c3c; }
+
+@media (max-width: 768px) {
+    .user-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .user-actions {
+        margin-top: 15px;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+    }
+    .approve-btn, .reject-btn {
+        width: 48%;
+    }
+}
